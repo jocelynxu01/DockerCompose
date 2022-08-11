@@ -1,9 +1,11 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Request
+from fastapi.responses import JSONResponse
 from tasks import celery_app
 from celery.result import AsyncResult
 from uuid import uuid4, UUID
 
 from minio_storage import upload_to_minio
+from urllib3.exceptions import MaxRetryError
 
 fastapi_app = FastAPI()
 
@@ -46,6 +48,7 @@ async def predict(x: int, y: int, return_pdf: UploadFile = File(...)):
         'result': celery_app_result.result
     }
 
+
 @fastapi_app.get("/results")
 async def results(task_id: str):
     celery_app_result = AsyncResult(task_id, app=celery_app)
@@ -55,3 +58,11 @@ async def results(task_id: str):
         'status': celery_app_result.state,
         'result': celery_app_result.result
     }
+
+
+@fastapi_app.exception_handler(MaxRetryError)
+async def unicorn_exception_handler(request: Request, exc: MaxRetryError):
+    return JSONResponse(
+        status_code=418,
+        content={"message": f"Oops! {exc} did something. There goes a rainbow..."},
+    )
