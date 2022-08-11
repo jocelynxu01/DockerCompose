@@ -1,6 +1,9 @@
 from fastapi import FastAPI, File, UploadFile
 from tasks import celery_app
 from celery.result import AsyncResult
+from uuid import uuid4, UUID
+
+from minio_storage import upload_to_minio
 
 fastapi_app = FastAPI()
 
@@ -20,8 +23,21 @@ async def predict(x: int, y: int, return_pdf: UploadFile = File(...)):
 
 
     data: bytes = await return_pdf.read()
+    task_id = uuid4()
+
+    upload_to_minio(
+        task_id=task_id,
+        data=data
+    )
+
+    bookmark_async_res: AsyncResult = celery_app.send_task(
+        'bookmark',
+        [task_id],
+        task_id=str(task_id)
+    )
+
     return {
-        'task_id': celery_app_result.id,
+        'task_id': f"{bookmark_async_res.id}",
         'input': {
             'x': x,
             'y': y
@@ -36,6 +52,6 @@ async def results(task_id: str):
     
     return {
         'task_id': task_id,
-        'status': celery_app_result.status,
+        'status': celery_app_result.state,
         'result': celery_app_result.result
     }
