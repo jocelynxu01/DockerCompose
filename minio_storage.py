@@ -4,7 +4,7 @@ from uuid import UUID
 import logging
 import io
 
-MINIO_ENDPOINT = '172.17.0.4:9000'
+MINIO_ENDPOINT = 'localhost:9000'
 MINIO_ACCESS_KEY = 'minio'
 MINIO_SECRET_KEY = 'minio123'
 
